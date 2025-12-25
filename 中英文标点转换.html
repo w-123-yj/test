@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>中文/英文标点转换｜柔和工具型 UI</title>
+  <style>
+    :root{
+      --bg0:#f6f7fb;
+      --bg1:#f3f7ff;
+      --bg2:#f9f5ff;
+      --card: rgba(255,255,255,.72);
+      --border: rgba(18, 30, 56, .10);
+      --border2: rgba(18, 30, 56, .08);
+      --text: rgba(20, 32, 55, .86);
+      --muted: rgba(20, 32, 55, .56);
+      --shadow: 0 18px 55px rgba(20, 32, 55, .08);
+      --shadow2: 0 10px 26px rgba(20, 32, 55, .06);
+      --focus: rgba(90, 132, 255, .22);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+              Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      --radius: 18px;
+      --radius2: 14px;
+      --ok-bg: rgba(60, 179, 113, .10);
+      --ok-bd: rgba(60, 179, 113, .25);
+      --err-bg: rgba(255, 99, 99, .10);
+      --err-bd: rgba(255, 99, 99, .25);
+    }
+
+    *{ box-sizing: border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(900px 550px at 18% 16%, rgba(170, 195, 255, .35), transparent 60%),
+        radial-gradient(700px 520px at 85% 20%, rgba(231, 190, 255, .28), transparent 55%),
+        radial-gradient(900px 600px at 70% 90%, rgba(191, 245, 235, .22), transparent 60%),
+        linear-gradient(180deg, var(--bg0), #ffffff 55%, var(--bg1));
+    }
+
+    .wrap{
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px 18px 36px;
+    }
+
+    header{
+      display:flex;
+      align-items:flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .title{
+      display:flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    h1{
+      margin:0;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: .2px;
+    }
+    .sub{
+      margin:0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .panel{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+
+    .toolbar{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.52));
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .left-tools,.right-tools{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn{
+      appearance:none;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.62);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1;
+      cursor:pointer;
+      transition: box-shadow .18s ease, background .18s ease, transform .18s ease, border-color .18s ease;
+      user-select:none;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,.78);
+      box-shadow: var(--shadow2);
+      transform: translateY(-1px);
+    }
+    .btn:active{ transform: translateY(0px); box-shadow:none; }
+
+    .btn.primary{
+      background: rgba(90,132,255,.12);
+      border-color: rgba(90,132,255,.25);
+    }
+    .btn.primary:hover{
+      background: rgba(90,132,255,.16);
+    }
+
+    /* 当前运行模式：按钮高亮（克制、低饱和） */
+    .btn.primary.active{
+      background: rgba(90,132,255,.22);
+      border-color: rgba(90,132,255,.48);
+      box-shadow: 0 12px 26px rgba(90,132,255,.12);
+    }
+    .btn.primary.active:hover{
+      background: rgba(90,132,255,.26);
+    }
+
+    .btn.ghost{
+      background: rgba(255,255,255,.40);
+    }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.52);
+      font-size: 13px;
+      color: var(--muted);
+      user-select:none;
+    }
+    .toggle input{
+      width: 16px;
+      height: 16px;
+      accent-color: rgba(90,132,255,.75);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .card{
+      background: rgba(255,255,255,.60);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius2);
+      padding: 12px;
+      min-height: 360px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card h2{
+      margin: 0;
+      font-size: 13px;
+      font-weight: 650;
+      color: rgba(20, 32, 55, .72);
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      letter-spacing: .2px;
+    }
+    .meta{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    textarea, .output{
+      width:100%;
+      flex: 1;
+      resize: none;
+      border-radius: 14px;
+      border: 1px solid var(--border2);
+      background: rgba(255,255,255,.70);
+      padding: 12px 12px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text);
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+    }
+    textarea{
+      font-family: var(--sans);
+    }
+    textarea:focus, .output:focus{
+      border-color: rgba(90,132,255,.38);
+      box-shadow: 0 0 0 4px var(--focus), inset 0 1px 0 rgba(255,255,255,.55);
+      background: rgba(255,255,255,.80);
+    }
+
+    .output{
+      font-family: var(--mono);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+    }
+
+    .status{
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 0 2px;
+      min-height: 18px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border2);
+      background: rgba(255,255,255,.52);
+    }
+    .pill.ok{
+      background: var(--ok-bg);
+      border-color: var(--ok-bd);
+    }
+    .pill.err{
+      background: var(--err-bg);
+      border-color: var(--err-bd);
+    }
+
+    .footer{
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      padding: 0 6px;
+    }
+
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .card{ min-height: 320px; }
+      header{ align-items:flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>中文/英文标点转换</h1>
+        <p class="sub">面向标题与短文本：一键将中文标点转换为英文标点，或反向转换。界面克制、耐看，适合长时间使用。</p>
+      </div>
+    </header>
+
+    <section class="panel" aria-label="Punctuation Converter">
+      <div class="toolbar">
+        <div class="left-tools">
+          <button class="btn primary" id="btnZhToEn" title="将中文标点转换为英文标点">中文标点 → 英文标点</button>
+          <button class="btn primary" id="btnEnToZh" title="将英文标点转换为中文标点">英文标点 → 中文标点</button>
+          <button class="btn" id="btnSwap" title="交换左右内容">交换</button>
+        </div>
+        <div class="right-tools">
+          <label class="toggle" title="开启后，输入变化将按上一次转换方向自动更新结果">
+            <input type="checkbox" id="autoMode" />
+            自动模式
+          </label>
+          <button class="btn ghost" id="btnCopy" title="复制右侧结果到剪贴板">复制结果</button>
+          <button class="btn ghost" id="btnClear" title="清空输入与结果">清空</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>
+            输入
+            <span class="meta" id="inMeta">0 字符</span>
+          </h2>
+          <textarea id="input" placeholder="在这里粘贴/输入标题或文本……例如：你真的懂“克制”吗？（一文讲透）"></textarea>
+          <div class="status">
+            <span class="pill" id="dirPill">方向：未选择</span>
+            <span class="pill" id="hintPill">提示：点击上方任一按钮开始转换</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>
+            结果
+            <span class="meta" id="outMeta">0 字符</span>
+          </h2>
+          <div class="output" id="output" tabindex="0" aria-label="Output"></div>
+          <div class="status">
+            <span class="pill" id="statusPill">状态：就绪</span>
+            <span class="pill" id="copyPill">复制：—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      说明：转换规则覆盖常见中文全角标点与英文半角标点，并对引号进行成对替换（“” ⇄ ""，‘’ ⇄ ''）。
+      若你的文本包含代码片段，建议在转换前先确认需求，避免误替换。
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------
+    // 标点映射（中文 -> 英文 / 英文 -> 中文）
+    // ----------------------------
+    const mapZhToEnSingle = new Map([
+      ["，", ","],
+      ["。", "."],
+      ["：", ":"],
+      ["；", ";"],
+      ["？", "?"],
+      ["！", "!"],
+      ["（", "("],
+      ["）", ")"],
+      ["【", "["],
+      ["】", "]"],
+      ["「", "\""],
+      ["」", "\""],
+      ["《", "<"],
+      ["》", ">"],
+      ["、", ","],
+      ["～", "~"],
+      ["—", "-"],
+      ["·", "·"], // 保留
+      ["　", " "], // 全角空格 -> 半角空格
+    ]);
+
+    const mapEnToZhSingle = new Map([
+      [",", "，"],
+      [".", "。"],
+      [":", "："],
+      [";", "；"],
+      ["?", "？"],
+      ["!", "！"],
+      ["(", "（"],
+      [")", "）"],
+      ["[", "【"],
+      ["]", "】"],
+      ["<", "《"],
+      [">", "》"],
+      ["~", "～"],
+      ["-", "—"], // 标题里常用破折号；若不想替换，可注释此行
+    ]);
+
+    function replacePairs(input, direction){
+      let s = input;
+
+      if(direction === "zh2en"){
+        // 成对中文引号 -> 英文
+        s = s.replace(/“/g, "\"").replace(/”/g, "\"");
+        s = s.replace(/‘/g, "'").replace(/’/g, "'");
+        // 省略号
+        s = s.replace(/……/g, "...");
+      } else {
+        // 英文省略号 -> 中文省略号（尽量保守）
+        s = s.replace(/\.{3,}/g, "……");
+        // 英文引号 -> 中文引号（按出现顺序交替开/闭）
+        s = smartQuoteToZh(s, "\"", "“", "”");
+        s = smartQuoteToZh(s, "'", "‘", "’");
+      }
+      return s;
+    }
+
+    function smartQuoteToZh(text, quoteChar, openQ, closeQ){
+      let out = "";
+      let opened = false;
+
+      for(let i=0;i<text.length;i++){
+        const ch = text[i];
+        if(ch === quoteChar){
+          out += opened ? closeQ : openQ;
+          opened = !opened;
+        } else {
+          out += ch;
+        }
+      }
+      return out;
+    }
+
+    function replaceSingles(input, direction){
+      const map = direction === "zh2en" ? mapZhToEnSingle : mapEnToZhSingle;
+      let out = "";
+      for(const ch of input){
+        out += map.has(ch) ? map.get(ch) : ch;
+      }
+      return out;
+    }
+
+    function convert(text, direction){
+      let s = replacePairs(text, direction);
+      s = replaceSingles(s, direction);
+
+      if(direction === "zh2en"){
+        s = s.replace(/\s+([,.;:!?])/g, "$1"); // 标点前多余空格
+      }
+
+      if(direction === "en2zh"){
+        s = s.replace(/([，。；：？！】》）])\s+/g, "$1"); // 中文标点后多余空格
+      }
+
+      return s;
+    }
+
+    // ----------------------------
+    // UI 逻辑
+    // ----------------------------
+    const $ = (id) => document.getElementById(id);
+
+    const inputEl = $("input");
+    const outputEl = $("output");
+    const inMeta = $("inMeta");
+    const outMeta = $("outMeta");
+    const dirPill = $("dirPill");
+    const statusPill = $("statusPill");
+    const hintPill = $("hintPill");
+    const copyPill = $("copyPill");
+    const autoMode = $("autoMode");
+
+    const btnZhToEn = $("btnZhToEn");
+    const btnEnToZh = $("btnEnToZh");
+    const btnCopy = $("btnCopy");
+    const btnClear = $("btnClear");
+    const btnSwap = $("btnSwap");
+
+    let lastDirection = null; // 'zh2en' | 'en2zh'
+
+    function updateCounts(){
+      inMeta.textContent = `${inputEl.value.length} 字符`;
+      outMeta.textContent = `${outputEl.textContent.length} 字符`;
+    }
+
+    function updateActiveButtons(direction){
+      btnZhToEn.classList.toggle("active", direction === "zh2en");
+      btnEnToZh.classList.toggle("active", direction === "en2zh");
+    }
+
+    function setDirection(direction){
+      lastDirection = direction;
+      updateActiveButtons(direction);
+
+      dirPill.textContent = `方向：${direction === "zh2en" ? "中文 → 英文" : "英文 → 中文"}`;
+      hintPill.textContent = autoMode.checked
+        ? "提示：自动模式已开启，输入变化将自动更新"
+        : "提示：可继续编辑输入，然后再次点击按钮";
+    }
+
+    function setStatus(kind, text){
+      statusPill.classList.remove("ok","err");
+      if(kind === "ok") statusPill.classList.add("ok");
+      if(kind === "err") statusPill.classList.add("err");
+      statusPill.textContent = `状态：${text}`;
+    }
+
+    function runConvert(direction){
+      const src = inputEl.value || "";
+      setDirection(direction);
+
+      if(!src.trim()){
+        outputEl.textContent = "";
+        setStatus("err", "输入为空");
+        updateCounts();
+        return;
+      }
+
+      const out = convert(src, direction);
+      outputEl.textContent = out;
+      setStatus("ok", "已转换");
+      updateCounts();
+      copyPill.textContent = "复制：—";
+    }
+
+    btnZhToEn.addEventListener("click", () => runConvert("zh2en"));
+    btnEnToZh.addEventListener("click", () => runConvert("en2zh"));
+
+    inputEl.addEventListener("input", () => {
+      updateCounts();
+      if(autoMode.checked && lastDirection){
+        outputEl.textContent = convert(inputEl.value || "", lastDirection);
+        setStatus("ok", "已自动更新");
+        outMeta.textContent = `${outputEl.textContent.length} 字符`;
+      }
+    });
+
+    autoMode.addEventListener("change", () => {
+      hintPill.textContent = autoMode.checked
+        ? "提示：自动模式已开启，输入变化将自动更新"
+        : "提示：点击上方任一按钮开始转换";
+
+      if(autoMode.checked && lastDirection){
+        outputEl.textContent = convert(inputEl.value || "", lastDirection);
+        setStatus("ok", "已自动更新");
+        updateCounts();
+      }
+    });
+
+    btnClear.addEventListener("click", () => {
+      inputEl.value = "";
+      outputEl.textContent = "";
+      lastDirection = null;
+      updateActiveButtons(null);
+
+      dirPill.textContent = "方向：未选择";
+      setStatus(null, "就绪");
+      hintPill.textContent = "提示：点击上方任一按钮开始转换";
+      copyPill.textContent = "复制：—";
+      updateCounts();
+      inputEl.focus();
+    });
+
+    btnSwap.addEventListener("click", () => {
+      const left = inputEl.value;
+      const right = outputEl.textContent;
+      inputEl.value = right || "";
+      outputEl.textContent = left || "";
+
+      setStatus(null, "已交换");
+      copyPill.textContent = "复制：—";
+      updateCounts();
+    });
+
+    btnCopy.addEventListener("click", async () => {
+      const text = outputEl.textContent || "";
+      if(!text){
+        copyPill.textContent = "复制：无内容";
+        setStatus("err", "结果为空");
+        return;
+      }
+      try{
+        await navigator.clipboard.writeText(text);
+        copyPill.textContent = "复制：已复制";
+        setStatus("ok", "已复制到剪贴板");
+      } catch(e){
+        // 兼容不支持 clipboard API 的环境
+        try{
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          copyPill.textContent = "复制：已复制";
+          setStatus("ok", "已复制到剪贴板");
+        } catch(err){
+          copyPill.textContent = "复制：失败";
+          setStatus("err", "复制失败（浏览器限制）");
+        }
+      }
+    });
+
+    // 初始计数/状态
+    updateCounts();
+    updateActiveButtons(null);
+  </script>
+</body>
+</html>

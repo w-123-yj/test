@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>括号对上色 · 柔和高亮</title>
+  <style>
+    :root{
+      --bg1:#f6f7fb;
+      --bg2:#eef3ff;
+      --card:#ffffffcc;
+      --stroke:#e7eaf3;
+      --text:#1f2a44;
+      --muted:#6b7280;
+      --shadow: 0 10px 30px rgba(20, 35, 90, .08);
+
+      /* 柔和配色（循环使用） */
+      --c1:#7aa2f7;
+      --c2:#7dcfff;
+      --c3:#9ece6a;
+      --c4:#e0af68;
+      --c5:#bb9af7;
+      --c6:#f7768e;
+
+      --err-bg: rgba(247, 118, 142, .14);
+      --err-bd: rgba(247, 118, 142, .55);
+      --ok-bg: rgba(158, 206, 106, .12);
+      --ok-bd: rgba(158, 206, 106, .45);
+
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+              "Courier New", "Noto Sans Mono CJK SC", "Noto Sans Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+              "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+
+      /* —— 同屏关键：这里控制上方编辑区高度（可微调） —— */
+      --editor-height: 36vh;      /* 上方输入/输出框高度：建议 32~40vh */
+      --editor-min: 240px;        /* 上方最小高度 */
+      --editor-max: 420px;        /* 上方最大高度 */
+    }
+
+    * { box-sizing: border-box; }
+    html, body{ height: 100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% 10%, var(--bg2) 0%, transparent 55%),
+        radial-gradient(1000px 700px at 90% 20%, #fff2f7 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg1), #ffffff 70%);
+    }
+
+    header{
+      padding: 18px 20px 8px; /* 缩小头部，保证同屏 */
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .title{
+      display:flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    h1{
+      margin:0;
+      font-size: 20px;
+      letter-spacing: .2px;
+    }
+    .sub{
+      margin:0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .wrap{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 10px 20px 16px; /* 缩小整体 padding */
+      display:flex;
+      flex-direction: column;
+      gap: 10px;              /* 缩小间距 */
+    }
+
+    .panel{
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .toolbar{
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,255,255,.55));
+      flex-wrap: wrap;
+    }
+
+    .toolbar .left{
+      display:flex;
+      flex-wrap: wrap;
+      align-items:center;
+      gap: 8px 12px;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.7);
+      font-size: 12px;
+      color: var(--muted);
+      user-select: none;
+      white-space: nowrap;
+    }
+    .dot{
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--ok-bd);
+      box-shadow: 0 0 0 4px var(--ok-bg);
+    }
+
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap: wrap;
+      align-items:center;
+    }
+    button{
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.75);
+      color: var(--text);
+      padding: 8px 11px;
+      border-radius: 12px;
+      font-size: 12px;
+      cursor:pointer;
+      transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
+      white-space: nowrap;
+    }
+    button:hover{
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 6px 16px rgba(20,35,90,.08);
+    }
+    button:active{ transform: translateY(1px); }
+
+    #btnMode{
+      border-color: rgba(122,162,247,.35);
+      box-shadow: 0 6px 16px rgba(122,162,247,.10);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .col{
+      padding: 12px;
+    }
+    .col + .col{
+      border-left: 1px solid var(--stroke);
+    }
+    @media (max-width: 980px){
+      .col + .col{ border-left: none; border-top: 1px solid var(--stroke); }
+    }
+
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 4px 0 8px;
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      gap: 10px;
+    }
+
+    /* —— 同屏关键：固定高度（用 clamp 适配不同屏幕） —— */
+    textarea{
+      width: 100%;
+      height: clamp(var(--editor-min), var(--editor-height), var(--editor-max));
+      resize: none; /* 禁止拖拽拉高，避免把时间戳模块顶出一屏 */
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.8);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+      outline: none;
+      color: #111827;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+      overflow:auto;
+    }
+    textarea:focus{
+      border-color: rgba(122,162,247,.55);
+      box-shadow: 0 0 0 6px rgba(122,162,247,.14);
+      background: rgba(255,255,255,.92);
+    }
+
+    .out{
+      width: 100%;
+      height: clamp(var(--editor-min), var(--editor-height), var(--editor-max));
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.78);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+      overflow:auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .br{
+      padding: 0 1px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.03);
+    }
+
+    .p-0{ color: var(--c1); background: color-mix(in srgb, var(--c1) 12%, transparent); }
+    .p-1{ color: var(--c2); background: color-mix(in srgb, var(--c2) 12%, transparent); }
+    .p-2{ color: var(--c3); background: color-mix(in srgb, var(--c3) 12%, transparent); }
+    .p-3{ color: var(--c4); background: color-mix(in srgb, var(--c4) 12%, transparent); }
+    .p-4{ color: var(--c5); background: color-mix(in srgb, var(--c5) 12%, transparent); }
+    .p-5{ color: var(--c6); background: color-mix(in srgb, var(--c6) 12%, transparent); }
+
+    .err{
+      color: #b4233a;
+      background: var(--err-bg);
+      outline: 1px solid var(--err-bd);
+    }
+
+    .status{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .status .pill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.7);
+      white-space: nowrap;
+    }
+    .status .pill.ok{
+      border-color: var(--ok-bd);
+      background: var(--ok-bg);
+      color: #2f5b2a;
+    }
+    .status .pill.bad{
+      border-color: var(--err-bd);
+      background: var(--err-bg);
+      color: #7a1223;
+    }
+
+    .out::-webkit-scrollbar, textarea::-webkit-scrollbar { width: 10px; height:10px; }
+    .out::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb{
+      background: rgba(31,42,68,.12);
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,.7);
+    }
+    .out::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track{
+      background: rgba(255,255,255,.35);
+      border-radius: 999px;
+    }
+
+    /* ===== 时间戳转换模块 ===== */
+    .section-head{
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,255,255,.55));
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .section-title{
+      margin:0;
+      font-size: 13px;
+      letter-spacing: .2px;
+    }
+    .section-note{
+      margin:2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .rows{
+      padding: 12px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr auto 1.25fr;
+      gap: 10px;
+      align-items:center;
+    }
+    @media (max-width: 980px){
+      .row{ grid-template-columns: 1fr; }
+      .row button{ width: 100%; }
+    }
+
+    .field, .select, .readonly{
+      width: 100%;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.8);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+      color: #111827;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .select{
+      font-family: var(--sans);
+      color: var(--text);
+    }
+    .field:focus, .select:focus{
+      border-color: rgba(122,162,247,.55);
+      box-shadow: 0 0 0 6px rgba(122,162,247,.14);
+      background: rgba(255,255,255,.92);
+    }
+    .readonly{ color: #334155; }
+
+    .hint{
+      padding: 0 12px 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    code.kbd{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.7);
+      color: #334155;
+    }
+
+    /* 让页面更容易同屏：不要额外 footer 占高度 */
+    footer{ display:none; }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="title">
+    <h1>括号对上色</h1>
+    <p class="sub">两种模式：按“括号对”分配颜色（默认）/ 按“嵌套层级”分配颜色。下方附北京时间时间戳转换。</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- 主面板：括号上色 -->
+  <div class="panel">
+    <div class="toolbar">
+      <div class="left">
+        <span class="badge"><span class="dot" id="dot"></span><span id="modeText">模式：按括号对上色</span></span>
+        <div class="status" aria-live="polite">
+          <span class="pill" id="pill">等待输入</span>
+          <span class="pill" id="stats">括号：0 对 / 错误：0</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnMode" type="button">切换模式</button>
+        <button id="btnSample" type="button">填入示例</button>
+        <button id="btnCopy" type="button">复制原始文本</button>
+        <button id="btnClear" type="button">清空</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col">
+        <div class="label">
+          <span>输入（粘贴或编辑）</span>
+          <span>支持：<code class="kbd">() [] {} &lt;&gt;</code></span>
+        </div>
+        <textarea id="input" placeholder="在这里粘贴文本，比如代码、JSON、Markdown、日志等…"></textarea>
+      </div>
+
+      <div class="col">
+        <div class="label">
+          <span>输出（自动高亮）</span>
+          <span>右侧为渲染预览</span>
+        </div>
+        <div id="output" class="out"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 时间戳转换（北京时间） -->
+  <div class="panel">
+    <div class="section-head">
+      <div>
+        <p class="section-title">时间戳双向转换（北京时间）</p>
+        <p class="section-note">固定北京时间（UTC+8 / Asia/Shanghai），无需选择时区。</p>
+      </div>
+      <span class="badge">输出格式：<code class="kbd">YYYY-MM-DD HH:mm:ss</code></span>
+    </div>
+
+    <div class="rows">
+      <div class="row">
+        <input id="tsIn" class="field" placeholder="输入时间戳，例如：1766633024" />
+        <select id="tsUnit" class="select" aria-label="时间戳单位">
+          <option value="s" selected>秒(s)</option>
+          <option value="ms">毫秒(ms)</option>
+        </select>
+        <button id="btnTsToDt" type="button">转换</button>
+        <input id="dtOut" class="readonly" readonly placeholder="转换结果（北京时间）" />
+      </div>
+
+      <div class="row">
+        <input id="dtIn" class="field" placeholder="输入日期时间，例如：2025-12-25 11:23:44" />
+        <select id="outUnit" class="select" aria-label="输出单位">
+          <option value="s" selected>秒(s)</option>
+          <option value="ms">毫秒(ms)</option>
+        </select>
+        <button id="btnDtToTs" type="button">转换</button>
+        <input id="tsOut" class="readonly" readonly placeholder="转换结果（时间戳）" />
+      </div>
+    </div>
+
+    <div class="hint">
+      日期时间输入支持：<code class="kbd">YYYY-MM-DD HH:mm:ss</code> 或 <code class="kbd">YYYY-MM-DDTHH:mm:ss</code>（均按北京时间解释）。
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== 括号上色逻辑 =====
+  const inputEl = document.getElementById('input');
+  const outputEl = document.getElementById('output');
+  const pillEl = document.getElementById('pill');
+  const statsEl = document.getElementById('stats');
+  const dotEl = document.getElementById('dot');
+  const modeTextEl = document.getElementById('modeText');
+  const btnModeEl = document.getElementById('btnMode');
+
+  const PAIRS = new Map([
+    ['(', ')'],
+    ['[', ']'],
+    ['{', '}'],
+    ['<', '>'],
+  ]);
+  const OPEN = new Set(PAIRS.keys());
+  const CLOSE = new Set([...PAIRS.values()]);
+  const CLOSE_TO_OPEN = new Map([...PAIRS.entries()].map(([o,c]) => [c,o]));
+  const PALETTE = ['p-0','p-1','p-2','p-3','p-4','p-5'];
+
+  const Modes = Object.freeze({ PAIR: 'PAIR', LEVEL: 'LEVEL' });
+  let mode = Modes.PAIR; // 默认：按括号对上色
+
+  function escapeHtml(s){
+    return s
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'","&#39;");
+  }
+
+  function colorize(text){
+    const stack = []; // { ch, idx, cls }
+    const mark = new Array(text.length).fill(null);
+
+    let pairs = 0;
+    let errors = 0;
+    let pairIndex = 0;
+
+    for (let i=0;i<text.length;i++){
+      const ch = text[i];
+
+      if (OPEN.has(ch)){
+        let cls;
+        if (mode === Modes.LEVEL){
+          const level = stack.length;
+          cls = PALETTE[level % PALETTE.length];
+        } else {
+          cls = null;
+        }
+        stack.push({ ch, idx: i, cls });
+        if (mode === Modes.LEVEL){
+          mark[i] = { cls, isErr: false };
+        }
+        continue;
+      }
+
+      if (CLOSE.has(ch)){
+        const expectedOpen = CLOSE_TO_OPEN.get(ch);
+
+        if (stack.length === 0){
+          mark[i] = { cls: 'err', isErr: true };
+          errors++;
+          continue;
+        }
+
+        const top = stack[stack.length - 1];
+
+        if (top.ch !== expectedOpen){
+          mark[i] = { cls: 'err', isErr: true };
+          errors++;
+
+          if (!mark[top.idx] || !mark[top.idx].isErr){
+            mark[top.idx] = { cls: 'err', isErr: true };
+            errors++;
+          }
+          continue;
+        }
+
+        stack.pop();
+
+        let cls;
+        if (mode === Modes.LEVEL){
+          cls = top.cls;
+        } else {
+          cls = PALETTE[pairIndex % PALETTE.length];
+          pairIndex++;
+          mark[top.idx] = { cls, isErr: false };
+        }
+        mark[i] = { cls, isErr: false };
+        pairs++;
+      }
+    }
+
+    for (const item of stack){
+      if (!mark[item.idx] || !mark[item.idx].isErr){
+        mark[item.idx] = { cls: 'err', isErr: true };
+        errors++;
+      }
+    }
+
+    let out = '';
+    for (let i=0;i<text.length;i++){
+      const ch = text[i];
+      const m = mark[i];
+      if (m){
+        out += `<span class="br ${m.cls}">${escapeHtml(ch)}</span>`;
+      } else {
+        out += escapeHtml(ch);
+      }
+    }
+
+    return { html: out, pairs, errors };
+  }
+
+  function setStatus({pairs, errors}, hasInput){
+    statsEl.textContent = `括号：${pairs} 对 / 错误：${errors}`;
+
+    if (!hasInput){
+      pillEl.textContent = '等待输入';
+      pillEl.className = 'pill';
+      dotEl.style.background = 'rgba(158,206,106,.55)';
+      return;
+    }
+
+    if (errors === 0){
+      pillEl.textContent = '括号配对正常';
+      pillEl.className = 'pill ok';
+      dotEl.style.background = 'rgba(158,206,106,.65)';
+    } else {
+      pillEl.textContent = `发现 ${errors} 处括号问题`;
+      pillEl.className = 'pill bad';
+      dotEl.style.background = 'rgba(247,118,142,.65)';
+    }
+  }
+
+  function refreshModeLabel(){
+    if (mode === Modes.PAIR){
+      modeTextEl.textContent = '模式：按括号对上色';
+      btnModeEl.textContent = '切换到：同层级同色';
+    } else {
+      modeTextEl.textContent = '模式：同层级同色';
+      btnModeEl.textContent = '切换到：按括号对上色';
+    }
+  }
+
+  function render(){
+    const text = inputEl.value || '';
+    const res = colorize(text);
+    outputEl.innerHTML = res.html || '';
+    setStatus(res, text.length > 0);
+  }
+
+  inputEl.addEventListener('input', render);
+
+  btnModeEl.addEventListener('click', () => {
+    mode = (mode === Modes.PAIR) ? Modes.LEVEL : Modes.PAIR;
+    refreshModeLabel();
+    render();
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    inputEl.value = '';
+    render();
+    inputEl.focus();
+  });
+
+  document.getElementById('btnSample').addEventListener('click', () => {
+    inputEl.value =
+`function demo(x) {
+  const obj = { a: [1, 2, (3 + 4)], b: { c: "<tag>([]){}" } };
+  return (x * (obj.a[2])) + (obj.b.c.length);
+}
+
+// 故意制造一处错误：
+if (true] { console.log("oops"); }`;
+    render();
+    inputEl.focus();
+  });
+
+  document.getElementById('btnCopy').addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(inputEl.value || '');
+      pillEl.textContent = '已复制（原始文本）';
+      pillEl.className = 'pill ok';
+      setTimeout(render, 800);
+    }catch(e){
+      pillEl.textContent = '复制失败：浏览器权限限制';
+      pillEl.className = 'pill bad';
+      setTimeout(render, 1000);
+    }
+  });
+
+  // 左侧滚动时同步右侧（不影响同屏）
+  let syncing = false;
+  inputEl.addEventListener('scroll', () => {
+    if (syncing) return;
+    syncing = true;
+    const ratio = inputEl.scrollTop / (inputEl.scrollHeight - inputEl.clientHeight || 1);
+    outputEl.scrollTop = ratio * (outputEl.scrollHeight - outputEl.clientHeight);
+    requestAnimationFrame(() => syncing = false);
+  });
+
+  refreshModeLabel();
+  render();
+
+  // ===== 时间戳双向转换（北京时间） =====
+  const TZ = 'Asia/Shanghai';
+  const tsInEl = document.getElementById('tsIn');
+  const tsUnitEl = document.getElementById('tsUnit');
+  const dtOutEl = document.getElementById('dtOut');
+  const dtInEl = document.getElementById('dtIn');
+  const outUnitEl = document.getElementById('outUnit');
+  const tsOutEl = document.getElementById('tsOut');
+
+  function formatBeijing(ms){
+    const d = new Date(ms);
+    const parts = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: TZ,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).formatToParts(d);
+
+    const get = (type) => parts.find(p => p.type === type)?.value ?? '';
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+  }
+
+  // 按“北京时间”解释输入，再转成 UTC 毫秒
+  function parseBeijingToUtcMs(s){
+    const str = (s || '').trim().replace('T', ' ');
+    const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/.exec(str);
+    if (!m) return null;
+
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const hh = Number(m[4]);
+    const mm = Number(m[5]);
+    const ss = Number(m[6]);
+
+    return Date.UTC(y, mo - 1, d, hh - 8, mm, ss);
+  }
+
+  function convertTsToDt(){
+    const raw = (tsInEl.value || '').trim();
+    if (!raw){ dtOutEl.value = ''; return; }
+    const n = Number(raw);
+    if (!Number.isFinite(n)){ dtOutEl.value = '请输入有效数字'; return; }
+    const ms = (tsUnitEl.value === 'ms') ? n : n * 1000;
+    dtOutEl.value = formatBeijing(ms);
+  }
+
+  function convertDtToTs(){
+    const raw = (dtInEl.value || '').trim();
+    if (!raw){ tsOutEl.value = ''; return; }
+    const utcMs = parseBeijingToUtcMs(raw);
+    if (utcMs === null){ tsOutEl.value = '格式应为 YYYY-MM-DD HH:mm:ss'; return; }
+    tsOutEl.value = (outUnitEl.value === 'ms') ? String(utcMs) : String(Math.floor(utcMs / 1000));
+  }
+
+  document.getElementById('btnTsToDt').addEventListener('click', convertTsToDt);
+  document.getElementById('btnDtToTs').addEventListener('click', convertDtToTs);
+
+  tsInEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') convertTsToDt(); });
+  dtInEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') convertDtToTs(); });
+</script>
+</body>
+</html>
